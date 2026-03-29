@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scratchpad — Todo</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      :root {
+        --paper: #faf6ee;
+        --paper-dark: #f0e9d8;
+        --ink: #2a1f0e;
+        --ink-light: #6b5a40;
+        --ink-faint: #b8a98a;
+        --red: #c0392b;
+        --teal: #1a7a6e;
+        --rule: rgba(100, 130, 200, 0.18);
+        --shadow: rgba(60, 40, 10, 0.12);
+      }
+
+      body {
+        background: #d9cfc0;
+        background-image:
+          radial-gradient(
+            ellipse at 20% 50%,
+            rgba(200, 185, 155, 0.6) 0%,
+            transparent 60%
+          ),
+          radial-gradient(
+            ellipse at 80% 20%,
+            rgba(180, 165, 135, 0.4) 0%,
+            transparent 50%
+          );
+        min-height: 100vh;
+        font-family: "Libre Baskerville", Georgia, serif;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 3rem 1rem 4rem;
+      }
+
+      .notebook {
+        width: 100%;
+        max-width: 560px;
+        background: var(--paper);
+        border-radius: 2px 8px 8px 2px;
+        box-shadow:
+          -6px 0 0 #c5b99a,
+          -10px 0 0 #b8ab92,
+          0 8px 40px rgba(60, 40, 10, 0.25),
+          0 2px 8px rgba(60, 40, 10, 0.15);
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* Ruled lines background */
+      .notebook::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image: repeating-linear-gradient(
+          to bottom,
+          transparent 0px,
+          transparent 31px,
+          var(--rule) 31px,
+          var(--rule) 32px
+        );
+        background-position: 0 70px;
+        pointer-events: none;
+      }
+
+      /* Left margin line */
+      .notebook::after {
+        content: "";
+        position: absolute;
+        left: 68px;
+        top: 0;
+        bottom: 0;
+        width: 1px;
+        background: rgba(200, 100, 100, 0.25);
+        pointer-events: none;
+      }
+
+      /* Spiral holes */
+      .holes {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 22px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 28px 0;
+        gap: 0;
+        z-index: 10;
+        pointer-events: none;
+      }
+
+      .hole {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #d9cfc0;
+        border: 1px solid #bfb398;
+        flex-shrink: 0;
+        margin: 22px 0;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+      }
+
+      /* Header */
+      .header {
+        padding: 2rem 2rem 1rem 5.5rem;
+        border-bottom: 2px solid var(--ink-faint);
+        position: relative;
+        z-index: 1;
+      }
+
+      .header-date {
+        font-size: 11px;
+        color: var(--ink-faint);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+      }
+
+      .header-title {
+        font-family: "Caveat", cursive;
+        font-size: 38px;
+        font-weight: 700;
+        color: var(--ink);
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .header-title .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--red);
+        flex-shrink: 0;
+      }
+
+      .header-subtitle {
+        font-style: italic;
+        font-size: 13px;
+        color: var(--ink-light);
+        margin-top: 4px;
+      }
+
+      /* Filter tabs */
+      .filters {
+        display: flex;
+        gap: 0;
+        padding: 0 2rem 0 5.5rem;
+        border-bottom: 1px solid var(--ink-faint);
+        position: relative;
+        z-index: 1;
+      }
+
+      .filter-btn {
+        background: none;
+        border: none;
+        font-family: "Caveat", cursive;
+        font-size: 17px;
+        color: var(--ink-faint);
+        padding: 10px 14px 10px 0;
+        cursor: pointer;
+        transition: color 0.15s;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+        letter-spacing: 0.02em;
+      }
+
+      .filter-btn:hover {
+        color: var(--ink-light);
+      }
+      .filter-btn.active {
+        color: var(--ink);
+        border-bottom-color: var(--red);
+        font-weight: 600;
+      }
+
+      /* Input area */
+      .input-area {
+        padding: 1.25rem 2rem 1.25rem 5.5rem;
+        border-bottom: 1px dashed var(--ink-faint);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .add-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--ink);
+        border: none;
+        cursor: pointer;
+        color: var(--paper);
+        font-size: 20px;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition:
+          transform 0.15s,
+          background 0.15s;
+        font-family: "Caveat", cursive;
+      }
+
+      .add-btn:hover {
+        background: var(--teal);
+        transform: rotate(90deg) scale(1.1);
+      }
+
+      .task-input {
+        flex: 1;
+        background: none;
+        border: none;
+        outline: none;
+        font-family: "Caveat", cursive;
+        font-size: 20px;
+        color: var(--ink);
+        caret-color: var(--red);
+      }
+
+      .task-input::placeholder {
+        color: var(--ink-faint);
+        font-style: italic;
+      }
+
+      /* Task list */
+      .task-list {
+        padding: 0.5rem 2rem 0.5rem 5.5rem;
+        min-height: 200px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 3rem 0;
+        font-family: "Caveat", cursive;
+        font-size: 20px;
+        color: var(--ink-faint);
+        font-style: italic;
+      }
+
+      .task-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 6px 0;
+        border-bottom: 1px solid transparent;
+        animation: fadeSlide 0.25s ease;
+        position: relative;
+        min-height: 32px;
+      }
+
+      @keyframes fadeSlide {
+        from {
+          opacity: 0;
+          transform: translateY(-8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .task-item.removing {
+        animation: fadeOut 0.2s ease forwards;
+      }
+
+      @keyframes fadeOut {
+        to {
+          opacity: 0;
+          transform: translateX(20px);
+          height: 0;
+          padding: 0;
+          min-height: 0;
+        }
+      }
+
+      /* Custom checkbox */
+      .task-check {
+        width: 18px;
+        height: 18px;
+        border: 1.5px solid var(--ink-faint);
+        border-radius: 2px;
+        flex-shrink: 0;
+        cursor: pointer;
+        margin-top: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+        font-family: "Caveat", cursive;
+        font-size: 14px;
+        color: transparent;
+        background: transparent;
+      }
+
+      .task-item.done .task-check {
+        background: var(--teal);
+        border-color: var(--teal);
+        color: white;
+      }
+
+      .task-text {
+        flex: 1;
+        font-family: "Caveat", cursive;
+        font-size: 20px;
+        color: var(--ink);
+        line-height: 1.5;
+        transition: color 0.2s;
+        word-break: break-word;
+        cursor: default;
+      }
+
+      .task-item.done .task-text {
+        color: var(--ink-faint);
+        text-decoration: line-through;
+        text-decoration-color: var(--red);
+        text-decoration-thickness: 1.5px;
+      }
+
+      .task-delete {
+        background: none;
+        border: none;
+        cursor: pointer;
+        opacity: 0;
+        color: var(--red);
+        font-size: 16px;
+        line-height: 1;
+        padding: 4px 2px;
+        transition: opacity 0.15s;
+        font-family: "Caveat", cursive;
+        margin-top: 2px;
+      }
+
+      .task-item:hover .task-delete {
+        opacity: 0.6;
+      }
+      .task-delete:hover {
+        opacity: 1 !important;
+      }
+
+      /* Footer */
+      .footer {
+        padding: 1rem 2rem 1.5rem 5.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-top: 1px solid var(--rule);
+        position: relative;
+        z-index: 1;
+      }
+
+      .footer-count {
+        font-size: 12px;
+        color: var(--ink-faint);
+        letter-spacing: 0.08em;
+        font-style: italic;
+      }
+
+      .clear-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-family: "Caveat", cursive;
+        font-size: 15px;
+        color: var(--ink-faint);
+        text-decoration: underline;
+        text-decoration-style: dotted;
+        transition: color 0.15s;
+      }
+
+      .clear-btn:hover {
+        color: var(--red);
+      }
+
+      /* Priority tag */
+      .priority-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        margin-top: 8px;
+      }
+
+      .p-high {
+        background: var(--red);
+      }
+      .p-med {
+        background: #e8a020;
+      }
+      .p-low {
+        background: var(--teal);
+      }
+
+      /* Priority selector */
+      .priority-select {
+        background: none;
+        border: none;
+        outline: none;
+        font-size: 16px;
+        cursor: pointer;
+        padding: 0;
+        flex-shrink: 0;
+      }
+
+      @media (max-width: 480px) {
+        body {
+          padding: 1.5rem 0.5rem 3rem;
+        }
+        .header {
+          padding-left: 3.5rem;
+        }
+        .filters,
+        .input-area,
+        .task-list,
+        .footer {
+          padding-left: 3.5rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="notebook">
+      <div class="holes" id="holes"></div>
+
+      <div class="header">
+        <div class="header-date" id="headerDate"></div>
+        <div class="header-title"><span class="dot"></span> Scratchpad</div>
+        <div class="header-subtitle">jot it down, cross it off</div>
+      </div>
+
+      <div class="filters">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="active">Active</button>
+        <button class="filter-btn" data-filter="done">Done</button>
+      </div>
+
+      <div class="input-area">
+        <select class="priority-select" id="prioritySelect" title="Priority">
+          <option value="low">🟢</option>
+          <option value="med" selected>🟡</option>
+          <option value="high">🔴</option>
+        </select>
+        <input
+          class="task-input"
+          id="taskInput"
+          type="text"
+          placeholder="add a new task…"
+          maxlength="120"
+          autocomplete="off"
+        />
+        <button class="add-btn" id="addBtn" title="Add task">+</button>
+      </div>
+
+      <div class="task-list" id="taskList"></div>
+
+      <div class="footer">
+        <span class="footer-count" id="footerCount"></span>
+        <button class="clear-btn" id="clearDone">clear done</button>
+      </div>
+    </div>
+
+    <script>
+      // State
+      let tasks = JSON.parse(localStorage.getItem("scratchpad-tasks") || "[]");
+      let filter = "all";
+
+      // Date header
+      const d = new Date();
+      document.getElementById("headerDate").textContent = d.toLocaleDateString(
+        "en-US",
+        { weekday: "long", month: "long", day: "numeric", year: "numeric" },
+      );
+
+      // Spiral holes
+      const holesEl = document.getElementById("holes");
+      const notebook = document.querySelector(".notebook");
+      function drawHoles() {
+        holesEl.innerHTML = "";
+        const count = Math.floor(notebook.offsetHeight / 40);
+        for (let i = 0; i < count; i++) {
+          const h = document.createElement("div");
+          h.className = "hole";
+          holesEl.appendChild(h);
+        }
+      }
+
+      function save() {
+        localStorage.setItem("scratchpad-tasks", JSON.stringify(tasks));
+      }
+
+      function render() {
+        const list = document.getElementById("taskList");
+        const visible = tasks.filter((t) =>
+          filter === "all" ? true : filter === "done" ? t.done : !t.done,
+        );
+
+        list.innerHTML = "";
+
+        if (visible.length === 0) {
+          const em = document.createElement("div");
+          em.className = "empty-state";
+          em.textContent =
+            filter === "done"
+              ? "nothing done yet…"
+              : filter === "active"
+                ? "all caught up!"
+                : "the page is blank…";
+          list.appendChild(em);
+        } else {
+          visible.forEach((task) => {
+            const item = document.createElement("div");
+            item.className = "task-item" + (task.done ? " done" : "");
+            item.dataset.id = task.id;
+
+            const dotClass = { high: "p-high", med: "p-med", low: "p-low" }[
+              task.priority || "med"
+            ];
+            item.innerHTML = `
+          <div class="priority-dot ${dotClass}"></div>
+          <div class="task-check" role="checkbox" aria-checked="${task.done}">${task.done ? "✓" : ""}</div>
+          <span class="task-text">${escHtml(task.text)}</span>
+          <button class="task-delete" title="Delete">✕</button>
+        `;
+
+            item
+              .querySelector(".task-check")
+              .addEventListener("click", () => toggle(task.id));
+            item
+              .querySelector(".task-text")
+              .addEventListener("dblclick", () => startEdit(item, task));
+            item
+              .querySelector(".task-delete")
+              .addEventListener("click", () => remove(task.id, item));
+
+            list.appendChild(item);
+          });
+        }
+
+        const remaining = tasks.filter((t) => !t.done).length;
+        const total = tasks.length;
+        document.getElementById("footerCount").textContent =
+          `${remaining} of ${total} remaining`;
+
+        drawHoles();
+      }
+
+      function escHtml(s) {
+        return s
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      function addTask() {
+        const input = document.getElementById("taskInput");
+        const text = input.value.trim();
+        if (!text) return;
+        const priority = document.getElementById("prioritySelect").value;
+        tasks.unshift({ id: Date.now(), text, done: false, priority });
+        input.value = "";
+        save();
+        render();
+      }
+
+      function toggle(id) {
+        const t = tasks.find((t) => t.id === id);
+        if (t) {
+          t.done = !t.done;
+          save();
+          render();
+        }
+      }
+
+      function remove(id, itemEl) {
+        itemEl.classList.add("removing");
+        setTimeout(() => {
+          tasks = tasks.filter((t) => t.id !== id);
+          save();
+          render();
+        }, 200);
+      }
+
+      function startEdit(itemEl, task) {
+        const textEl = itemEl.querySelector(".task-text");
+        const old = task.text;
+        textEl.contentEditable = "true";
+        textEl.focus();
+        // select all
+        const sel = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(textEl);
+        sel.removeAllRanges();
+        sel.addRange(range);
+
+        function finish() {
+          textEl.contentEditable = "false";
+          const newText = textEl.textContent.trim();
+          if (newText) {
+            task.text = newText;
+            save();
+          } else {
+            task.text = old;
+          }
+          render();
+        }
+
+        textEl.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            finish();
+          }
+          if (e.key === "Escape") {
+            task.text = old;
+            render();
+          }
+        });
+        textEl.addEventListener("blur", finish, { once: true });
+      }
+
+      // Events
+      document.getElementById("addBtn").addEventListener("click", addTask);
+      document.getElementById("taskInput").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") addTask();
+      });
+
+      document.querySelectorAll(".filter-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          filter = btn.dataset.filter;
+          document
+            .querySelectorAll(".filter-btn")
+            .forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          render();
+        });
+      });
+
+      document.getElementById("clearDone").addEventListener("click", () => {
+        tasks = tasks.filter((t) => !t.done);
+        save();
+        render();
+      });
+
+      window.addEventListener("resize", drawHoles);
+
+      // Seed data if empty
+      if (tasks.length === 0) {
+        tasks = [
+          {
+            id: 1,
+            text: "Buy oat milk & sourdough",
+            done: false,
+            priority: "low",
+          },
+          {
+            id: 2,
+            text: "Reply to Alex about the project",
+            done: false,
+            priority: "high",
+          },
+          { id: 3, text: "Water the plants", done: true, priority: "med" },
+        ];
+        save();
+      }
+
+      render();
+    </script>
+  </body>
+</html>
